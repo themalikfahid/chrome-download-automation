@@ -10,34 +10,33 @@ PATH_RENAMED = r"D:\processed\renamed"
 FIXED_NAME_1 = "resume"
 FIXED_NAME_2 = "cover_letter"
 
-CHECK_INTERVAL = 3
+CHECK_INTERVAL = 2
 
 os.makedirs(PATH_ORIGINAL, exist_ok=True)
 os.makedirs(PATH_RENAMED, exist_ok=True)
 
-processed_files = []
+processing = False  # 🔒 batch lock
 
-def get_new_completed_files():
+def get_completed_files():
     files = []
     for f in os.listdir(CHROME_DOWNLOAD_PATH):
         full_path = os.path.join(CHROME_DOWNLOAD_PATH, f)
 
-        if (
-            os.path.isfile(full_path)
-            and not f.endswith(".crdownload")
-            and full_path not in processed_files
-        ):
+        if os.path.isfile(full_path) and not f.endswith(".crdownload"):
             files.append(full_path)
 
     files.sort(key=lambda x: os.path.getmtime(x))
     return files
 
 while True:
-    new_files = get_new_completed_files()
+    files = get_completed_files()
 
-    if len(new_files) >= 2:
-        file1 = new_files[0]
-        file2 = new_files[1]
+    # 🔒 Only start new batch if not already processing
+    if not processing and len(files) >= 2:
+        processing = True
+
+        file1 = files[0]
+        file2 = files[1]
 
         for src_path, fixed_name in zip(
             [file1, file2],
@@ -52,6 +51,10 @@ while True:
                 os.path.join(PATH_RENAMED, fixed_name + ext)
             )
 
-            processed_files.append(src_path)
+            os.remove(src_path)
+
+            print(f"Processed & removed: {filename} → {fixed_name + ext}")
+
+        processing = False  # ✅ batch complete
 
     time.sleep(CHECK_INTERVAL)
